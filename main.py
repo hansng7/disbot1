@@ -1,5 +1,6 @@
 import os
 import discord
+from keep_alive import keep_alive
 
 token = os.environ['TOKEN']
 reminders_channel_id = 854328114837585921
@@ -30,4 +31,5 @@ async def on_message(message):
   elif message.content.startswith('$') or (client.user in message.mentions):
     await message.channel.send('Hello {0}'.format(message.author.mention)) 
 
+keep_alive()
 client.run(token, bot=True)
