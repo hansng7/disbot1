@@ -13,6 +13,8 @@ def get_rolemention_str(id):
 def get_usermention_str(id):
   return '<@!{0}>'.format(id)
 
+client = discord.Client()
+
 # function to send a message to bot channel
 async def bot_message(message_str):
   channel = client.get_channel(bot_channel_id)
@@ -30,7 +32,56 @@ async def remind_message(message_str):
   await new_message.add_reaction('\u2705')
   return new_message
 
-client = discord.Client()
+# function to add/remove reaction to a message
+async def toggle_reaction(message, emoji):
+  # calling remove_reaction() for non-existence reaction does not cause error, therefore it cannot be used to determine if the reaction is already there
+  reaction_found = False
+  error = None
+  for reaction in message.reactions:
+    if reaction.emoji == emoji:
+      reaction_users = await reaction.users().flatten()
+      if client.user in reaction_users:
+        # the reaction is found
+        reaction_found = True
+        break
+  # remove the reaction if the reaction is found
+  if reaction_found == True:
+    try:
+      await message.remove_reaction(emoji, client.user)
+    except Exception as e:
+      error = 'Something went wrong!'
+      print(e)
+  # add reaction if the reaction is not found
+  else:
+    try:
+      await message.add_reaction(emoji)
+    except discord.NotFound:
+      error = 'Emoji not found!'
+    except Exception as e:
+      error = 'Something went wrong!'
+      print(e)
+  return error
+
+# function to find a message by id and add/remove reaction to it
+async def find_and_toggle_reaction(message_id, emoji):
+  message = None
+  for channel in client.get_all_channels():
+    if channel.type == discord.ChannelType.text:
+      try:
+        message = await channel.fetch_message(message_id)
+        break
+      except (discord.NotFound, discord.Forbidden):
+        pass
+      except Exception as e:
+        error = 'Something went wrong!'
+        print(e)
+        break
+  # toggle the reaction if the message is found
+  if message != None:
+    error = await toggle_reaction(message, emoji)
+  else:
+    error = 'Message not found!'
+  return message, error
 
 @client.event
 async def on_ready():
@@ -54,8 +105,18 @@ async def on_message(message):
 #  elif (message.content == '$test') and (message.author.guild_permissions.administrator):
 #    await broadcast_message_remind('{0} test')
   
+  elif (message.content.startswith('$react')) and (message.author.guild_permissions.administrator):
+    tokens = message.content.split(' ')
+    if len(tokens) == 3:
+      reacted_message, error = await find_and_toggle_reaction(tokens[1], tokens[2])
+    else:
+      reacted_message = None
+      error = 'Command error!'
+    if error != None:
+      await message.channel.send(error)
+  
   elif message.content.startswith('$'):
-    await message.channel.send('Command not found')
+    await message.channel.send('Command not found!')
   
   elif client.user in message.mentions:
     await message.channel.send('Hello {0}'.format(message.author.mention))
