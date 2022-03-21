@@ -26,15 +26,7 @@ async def broadcast_message(channel_id, message_str):
 
 # function to send message to reminder channel and add reaction to it
 async def remind_message(message_str):
-  # new_message = await broadcast_message(reminders_channel_id, message_str)
-  new_message = await broadcast_message(bot_channel_id, message_str)
-  await new_message.add_reaction('\u2705')
-  return new_message
-
-# function to react to a message id
-async def remind_message(message_id):
-  # new_message = await broadcast_message(reminders_channel_id, message_str)
-  new_message = await broadcast_message(bot_channel_id, message_str)
+  new_message = await broadcast_message(reminders_channel_id, message_str)
   await new_message.add_reaction('\u2705')
   return new_message
 
