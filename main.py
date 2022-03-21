@@ -142,6 +142,9 @@ async def on_message(message):
   elif message.content.startswith('$'):
     await message.channel.send('Command not found!')
   
+  elif message.content.lower().find('spymon') >= 0:
+    await toggle_reaction(message, '\U0001f47e')
+  
   elif client.user in message.mentions:
     await message.channel.send('Hello {0}'.format(message.author.mention))
 
