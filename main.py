@@ -11,11 +11,44 @@ reminders_channel_id = 854328114837585921
 bot_channel_id = 955128791204765797
 travelers_role_id = 872748500033630218
 
+# same as discord.User.mention
+def get_mention_str(id):
+  return '<@!{0}>'.format(id)
+
+# alternative to discord.User.mention
+def get_usermention_str(id):
+  return '<@{0}>'.format(id)
+
+# same as discord.Role.mention
 def get_rolemention_str(id):
   return '<@&{0}>'.format(id)
-  
-def get_usermention_str(id):
-  return '<@!{0}>'.format(id)
+
+# same as discord.GuildChannel.mention
+def get_channelmention_str(id):
+  return '<@#{0}>'.format(id)
+
+def is_author_admin(message):
+  return message.author.guild_permissions.administrator
+
+# substring method, mainly for case-insensitive usage
+def str_contains(string, substring, case_sensitive=False):
+  if case_sensitive:
+    return substring in string
+  else:
+    return string.lower().find(substring) >= 0
+
+# check if a string mentions an id (can be user, role, channel)
+def str_mentions(string, id):
+  if get_mention_str(id) in string:
+    return True
+  elif get_usermention_str(id) in string:
+    return True
+  elif get_rolemention_str(id) in string:
+    return True
+  elif get_channelmention_str(id) in string:
+    return True
+  else:
+    return False
 
 client = discord.Client()
 
@@ -111,16 +144,17 @@ async def on_message(message):
   if message.author == client.user:
     return
 
-  if (message.content == '$daily') and (message.author.guild_permissions.administrator):
+  # admin commands
+  if (message.content == '$daily') and is_author_admin(message):
     await remind_message('{0} Check in')
 
-  elif (message.content == '$weekly') and (message.author.guild_permissions.administrator):
+  elif (message.content == '$weekly') and is_author_admin(message):
     await remind_message('{0} Buy omni-ubiquity net & do parametric transformer')
 
-  elif (message.content == '$teapot') and (message.author.guild_permissions.administrator):
+  elif (message.content == '$teapot') and is_author_admin(message):
     await remind_message('{0} Collect teapot coin')
   
-  elif (message.content.startswith('$react')) and (message.author.guild_permissions.administrator):
+  elif (message.content.startswith('$react')) and is_author_admin(message):
     tokens = message.content.split(' ')
     if len(tokens) == 3:
       message_id, emoji = tokens[1], tokens[2]
@@ -133,8 +167,24 @@ async def on_message(message):
     else:
       await message.channel.send(error)
 
+  elif message.content.startswith('$debug') and is_author_admin(message):
+    print('Content: {0}'.format(message.content))
+    if len(message.mentions):
+      print('User: {0}'.format(message.mentions))
+      buffer = ''
+      for user in message.mentions:
+        buffer += (user.mention + ' ')
+      print('    {0}'.format(buffer))
+    if len(message.role_mentions):
+      print('Role: {0}'.format(message.role_mentions))
+      buffer = ''
+      for role in message.role_mentions:
+        buffer += (role.mention + ' ')
+      print('    {0}'.format(buffer))
+
+  # all member commands
   elif (message.content == '$roll'):
-    await message.channel.send(random.choices(gi_characters, weights=gi_char_rates)[0], reference=message)
+    await message.reply(random.choices(gi_characters, weights=gi_char_rates)[0])
 
   elif (message.content == '$roll10'):
     rolls = random.choices(gi_characters, weights=gi_char_rates, k=10)
@@ -149,15 +199,16 @@ async def on_message(message):
       if count_even:
         formatted_2 += '\n'
     formatted_2 = '```\n' + formatted_2 + '\n```'
-    await message.channel.send(formatted_2, reference=message)
-  
+    await message.reply(formatted_2)
+
+  # etc commands    
   elif message.content.startswith('$'):
     await message.channel.send('Command not found!')
   
-  elif message.content.lower().find('spymon') >= 0:
+  elif str_contains(message.content, 'spymon'):
     await toggle_reaction(message, '\U0001f47e')
   
-  elif client.user in message.mentions:
+  elif (client.user.mentioned_in(message)) and str_mentions(message.content, client.user.id):
     await message.channel.send('Hello {0}'.format(message.author.mention))
 
 keep_alive()
