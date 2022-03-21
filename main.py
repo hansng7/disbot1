@@ -137,7 +137,19 @@ async def on_message(message):
     await message.channel.send(random.choices(gi_characters, weights=gi_char_rates)[0], reference=message)
 
   elif (message.content == '$roll10'):
-    await message.channel.send("\n".join(random.choices(gi_characters, weights=gi_char_rates, k=10)), reference=message)
+    rolls = random.choices(gi_characters, weights=gi_char_rates, k=10)
+    # format 1 : 10 new lines
+    # formatted_1 = "\n".join(rolls)
+    # format 2 : 2 columns by 5 lines inside code block
+    formatted_2 = ''
+    count_even = True
+    for char in rolls:
+      formatted_2 += char.ljust(17, ' ')
+      count_even = not(count_even)
+      if count_even:
+        formatted_2 += '\n'
+    formatted_2 = '```\n' + formatted_2 + '\n```'
+    await message.channel.send(formatted_2, reference=message)
   
   elif message.content.startswith('$'):
     await message.channel.send('Command not found!')
