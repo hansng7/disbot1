@@ -32,6 +32,25 @@ async def remind_message(message_str):
   await new_message.add_reaction('\u2705')
   return new_message
 
+# function to find a message by id
+async def find_message(message_id):
+  message = None
+  error = None
+  for channel in client.get_all_channels():
+    if channel.type == discord.ChannelType.text:
+      try:
+        message = await channel.fetch_message(message_id)
+        break
+      except (discord.NotFound, discord.Forbidden):
+        pass
+      except Exception as e:
+        error = 'Something went wrong!'
+        print(e)
+        break
+  if message == None:
+    error = 'Message not found!'
+  return message, error
+
 # function to add/remove reaction to a message
 async def toggle_reaction(message, emoji):
   # calling remove_reaction() for non-existence reaction does not cause error, therefore it cannot be used to determine if the reaction is already there
@@ -69,24 +88,12 @@ async def toggle_reaction(message, emoji):
 
 # function to find a message by id and add/remove reaction to it
 async def find_and_toggle_reaction(message_id, emoji):
-  message = None
-  for channel in client.get_all_channels():
-    if channel.type == discord.ChannelType.text:
-      try:
-        message = await channel.fetch_message(message_id)
-        break
-      except (discord.NotFound, discord.Forbidden):
-        pass
-      except Exception as e:
-        error = 'Something went wrong!'
-        print(e)
-        break
+  message, error = await find_message(message_id)
   # toggle the reaction if the message is found
   if message != None:
     reaction, error = await toggle_reaction(message, emoji)
   else:
     reaction = False
-    error = 'Message not found!'
   return message, reaction, error
 
 @client.event
@@ -96,6 +103,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+  # ignore own message
   if message.author == client.user:
     return
 
@@ -110,14 +118,14 @@ async def on_message(message):
   
   elif (message.content.startswith('$react')) and (message.author.guild_permissions.administrator):
     tokens = message.content.split(' ')
-    message_id = tokens[1]
-    emoji = tokens[2]
     if len(tokens) == 3:
+      message_id, emoji = tokens[1], tokens[2]
       reacted_message, reaction, error = await find_and_toggle_reaction(message_id, emoji)
     else:
       error = 'Command error!'
     if error == None:
-      await message.channel.send('Reaction {0} {1}\nLink: {2}'.format(emoji, 'added' if reaction else 'removed', reacted_message.jump_url))
+      reaction_status = 'added' if reaction else 'removed'
+      await message.channel.send('Reaction {0} {1}\nLink: {2}'.format(emoji, reaction_status, reacted_message.jump_url))
     else:
       await message.channel.send(error)
   
