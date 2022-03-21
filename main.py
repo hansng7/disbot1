@@ -36,6 +36,7 @@ async def remind_message(message_str):
 async def toggle_reaction(message, emoji):
   # calling remove_reaction() for non-existence reaction does not cause error, therefore it cannot be used to determine if the reaction is already there
   reaction_found = False
+  reaction_active = False
   error = None
   for reaction in message.reactions:
     if reaction.emoji == emoji:
@@ -51,6 +52,8 @@ async def toggle_reaction(message, emoji):
     except Exception as e:
       error = 'Something went wrong!'
       print(e)
+    finally:
+      reaction_active = False
   # add reaction if the reaction is not found
   else:
     try:
@@ -60,7 +63,9 @@ async def toggle_reaction(message, emoji):
     except Exception as e:
       error = 'Something went wrong!'
       print(e)
-  return error
+    finally:
+      reaction_active = True
+  return reaction_active, error
 
 # function to find a message by id and add/remove reaction to it
 async def find_and_toggle_reaction(message_id, emoji):
@@ -78,10 +83,11 @@ async def find_and_toggle_reaction(message_id, emoji):
         break
   # toggle the reaction if the message is found
   if message != None:
-    error = await toggle_reaction(message, emoji)
+    reaction, error = await toggle_reaction(message, emoji)
   else:
+    reaction = False
     error = 'Message not found!'
-  return message, error
+  return message, reaction, error
 
 @client.event
 async def on_ready():
@@ -102,17 +108,17 @@ async def on_message(message):
   elif (message.content == '$teapot') and (message.author.guild_permissions.administrator):
     await remind_message('{0} Collect teapot coin')
   
-#  elif (message.content == '$test') and (message.author.guild_permissions.administrator):
-#    await broadcast_message_remind('{0} test')
-  
   elif (message.content.startswith('$react')) and (message.author.guild_permissions.administrator):
     tokens = message.content.split(' ')
+    message_id = tokens[1]
+    emoji = tokens[2]
     if len(tokens) == 3:
-      reacted_message, error = await find_and_toggle_reaction(tokens[1], tokens[2])
+      reacted_message, reaction, error = await find_and_toggle_reaction(message_id, emoji)
     else:
-      reacted_message = None
       error = 'Command error!'
-    if error != None:
+    if error == None:
+      await message.channel.send('Reaction {0} {1}\nLink: {2}'.format(emoji, 'added' if reaction else 'removed', reacted_message.jump_url))
+    else:
       await message.channel.send(error)
   
   elif message.content.startswith('$'):
