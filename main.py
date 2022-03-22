@@ -14,11 +14,11 @@ travelers_role_id = 872748500033630218
 
 # same as discord.User.mention
 def get_mention_str(id):
-  return '<@!{0}>'.format(id)
+  return '<@{0}>'.format(id)
 
 # alternative to discord.User.mention
 def get_usermention_str(id):
-  return '<@{0}>'.format(id)
+  return '<@!{0}>'.format(id)
 
 # same as discord.Role.mention
 def get_rolemention_str(id):
@@ -75,10 +75,12 @@ async def find_message(message_id):
   message = None
   error = None
   for channel in client.get_all_channels():
+    # only search in text channels
     if channel.type == discord.ChannelType.text:
       try:
         message = await channel.fetch_message(message_id)
         break
+      # ignore not found and forbidden errors
       except (discord.NotFound, discord.Forbidden):
         pass
       except Exception as e:
@@ -106,22 +108,20 @@ async def toggle_reaction(message, emoji):
   if reaction_found == True:
     try:
       await message.remove_reaction(emoji, client.user)
+      reaction_active = False
     except Exception as e:
       error = 'Something went wrong!'
       print(e)
-    finally:
-      reaction_active = False
   # add reaction if the reaction is not found
   else:
     try:
       await message.add_reaction(emoji)
+      reaction_active = True
     except discord.NotFound:
       error = 'Emoji not found!'
     except Exception as e:
       error = 'Something went wrong!'
       print(e)
-    finally:
-      reaction_active = True
   return reaction_active, error
 
 # function to find a message by id and add/remove reaction to it
@@ -169,13 +169,16 @@ async def on_message(message):
       await message.channel.send(error)
 
   elif message.content.startswith('$debug') and is_author_admin(message):
+    # print the content to console
     print('Content: {0}'.format(message.content))
+    # print user mentions if any
     if len(message.mentions):
       print('User: {0}'.format(message.mentions))
       buffer = ''
       for user in message.mentions:
         buffer += (user.mention + ' ')
       print('    {0}'.format(buffer))
+    # print role mentions if any
     if len(message.role_mentions):
       print('Role: {0}'.format(message.role_mentions))
       buffer = ''
