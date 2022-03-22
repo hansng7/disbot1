@@ -160,6 +160,7 @@ async def send_endremind(message):
 async def on_ready():
   print('Logged in as {0}'.format(client.user))
   await send_bot_message('{0} entered chat'.format(client.user))
+  await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you"))
 
 @client.event
 async def on_message(message):
