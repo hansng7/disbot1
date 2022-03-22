@@ -11,6 +11,7 @@ token = os.environ['TOKEN']
 reminders_channel_id = 854328114837585921
 bot_channel_id = 955128791204765797
 travelers_role_id = 872748500033630218
+reminders_user_ids = [ 808939288774705182 , 359961846096330752 , 848608705843167282 ]
 
 # same as discord.User.mention
 def get_mention_str(id):
@@ -54,19 +55,19 @@ def str_mentions(string, id):
 client = discord.Client()
 
 # function to send a message to bot channel
-async def bot_message(message_str):
+async def send_bot_message(message_str):
   channel = client.get_channel(bot_channel_id)
   return await channel.send(message_str)
 
 # function to broadcast a message to a specific channel
-async def broadcast_message(channel_id, message_str):
+async def send_broadcast(channel_id, message_str):
   channel = client.get_channel(channel_id)
   parsed_message_str = message_str.format(get_rolemention_str(travelers_role_id))
   return await channel.send(parsed_message_str)
 
 # function to send message to reminder channel and add reaction to it
-async def remind_message(message_str):
-  new_message = await broadcast_message(reminders_channel_id, message_str)
+async def send_startremind(message_str):
+  new_message = await send_broadcast(reminders_channel_id, message_str)
   await new_message.add_reaction('\u2705')
   return new_message
 
@@ -134,10 +135,28 @@ async def find_and_toggle_reaction(message_id, emoji):
     reaction = False
   return message, reaction, error
 
+async def find_users_to_endremind(reactions):
+  user_ids_to_remind = reminders_user_ids.copy()
+  # loop through every reactions
+  for reaction in reactions:
+    reaction_users = await reaction.users().flatten()
+    # loop through every users of this reaction
+    for user in reaction_users:
+      if user.id in user_ids_to_remind:
+        user_ids_to_remind.remove(user.id)
+  return user_ids_to_remind
+
+async def send_endremind(message):
+  user_ids = await find_users_to_endremind(message.reactions)
+  buffer = ''
+  for user_id in user_ids:
+    buffer += (get_usermention_str(user_id) + ' ')
+  await message.reply(buffer)
+
 @client.event
 async def on_ready():
   print('Logged in as {0}'.format(client.user))
-  await bot_message('{0} entered chat'.format(client.user))
+  await send_bot_message('{0} entered chat'.format(client.user))
 
 @client.event
 async def on_message(message):
@@ -147,15 +166,28 @@ async def on_message(message):
 
   # admin commands
   if (message.content == '$daily') and is_author_admin(message):
-    await remind_message('{0} Check in')
+    await send_startremind('{0} Check in')
 
   elif (message.content == '$weekly') and is_author_admin(message):
-    await remind_message('{0} Buy omni-ubiquity net & do parametric transformer')
+    await send_startremind('{0} Buy omni-ubiquity net & do parametric transformer')
 
   elif (message.content == '$teapot') and is_author_admin(message):
-    await remind_message('{0} Collect teapot coin')
+    await send_startremind('{0} Collect teapot coin')
+
+  elif message.content.startswith('$checkremind') and is_author_admin(message):
+    users = []
+    tokens = message.content.split(' ')
+    if len(tokens) == 2:
+      message_id = tokens[1]
+      message, error = await find_message(message_id)
+      if message != None:
+        await send_endremind(message)
+    else:
+      error = 'Command error!'
+    if error != None:
+      await message.channel.send(error)
   
-  elif (message.content.startswith('$react')) and is_author_admin(message):
+  elif message.content.startswith('$react') and is_author_admin(message):
     tokens = message.content.split(' ')
     if len(tokens) == 3:
       message_id, emoji = tokens[1], tokens[2]
