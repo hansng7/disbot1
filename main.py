@@ -148,10 +148,13 @@ async def find_users_to_endremind(reactions):
 
 async def send_endremind(message):
   user_ids = await find_users_to_endremind(message.reactions)
-  buffer = ''
-  for user_id in user_ids:
-    buffer += (get_usermention_str(user_id) + ' ')
-  await message.reply(buffer)
+  if len(user_ids):
+    buffer = ''
+    for user_id in user_ids:
+      buffer += (get_usermention_str(user_id) + ' ')
+    await message.reply(buffer)
+  else:
+    await send_bot_message('No one to remind\nLink: {0}'.format(message.jump_url))
 
 @client.event
 async def on_ready():
