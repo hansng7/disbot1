@@ -1,6 +1,9 @@
 import os
 import random
+from datetime import datetime, timedelta, timezone
 import discord
+from discord import ActivityType, NotFound, Forbidden
+from discord.ext import tasks
 from keep_alive import keep_alive
 
 # gi_characters = [ 'Albedo' , 'Aloy' , 'Amber' , 'Arataki Itto' , 'Barbara' , 'Beidou' , 'Bennett' , 'Chongyun' , 'Diluc' , 'Diona' , 'Eula' , 'Fischl' , 'Ganyu' , 'Gorou' , 'Hu Tao' , 'Jean' , 'Kaedehara Kazuha' , 'Kaeya' , 'Kamisato Ayaka' , 'Kamisato Ayato' , 'Keqing' , 'Klee' , 'Kujou Sara' , 'Lisa' , 'Mona' , 'Ningguang' , 'Noelle' , 'Qiqi' , 'Raiden Shogun' , 'Razor' , 'Rosaria' , 'Sangonomiya Kokomi' , 'Sayu' , 'Shenhe' , 'Sucrose' , 'Tartaglia' , 'Thoma' , 'Traveler' , 'Venti' , 'Xiangling' , 'Xiao' , 'Xingqiu' , 'Xinyan' , 'Yae Miko' , 'Yanfei' , 'Yoimiya' , 'Yun Jin' , 'Zhongli' ]
@@ -12,6 +15,8 @@ reminders_channel_id = 854328114837585921
 bot_channel_id = 955128791204765797
 travelers_role_id = 872748500033630218
 reminders_user_ids = [ 808939288774705182 , 359961846096330752 , 848608705843167282 ]
+
+##############################
 
 # same as discord.User.mention
 def get_mention_str(id):
@@ -52,6 +57,8 @@ def str_mentions(string, id):
   else:
     return False
 
+##############################
+
 client = discord.Client()
 
 # function to send a message to bot channel
@@ -77,12 +84,12 @@ async def find_message(message_id):
   error = None
   for channel in client.get_all_channels():
     # only search in text channels
-    if channel.type == discord.ChannelType.text:
+    if channel.type == ChannelType.text:
       try:
         message = await channel.fetch_message(message_id)
         break
       # ignore not found and forbidden errors
-      except (discord.NotFound, discord.Forbidden):
+      except (NotFound, Forbidden):
         pass
       except Exception as e:
         error = 'Something went wrong!'
@@ -118,7 +125,7 @@ async def toggle_reaction(message, emoji):
     try:
       await message.add_reaction(emoji)
       reaction_active = True
-    except discord.NotFound:
+    except NotFound:
       error = 'Emoji not found!'
     except Exception as e:
       error = 'Something went wrong!'
@@ -135,6 +142,7 @@ async def find_and_toggle_reaction(message_id, emoji):
     reaction = False
   return message, reaction, error
 
+# function to find all users who have not reacted to a reminder message's reactions
 async def find_users_to_endremind(reactions):
   user_ids_to_remind = reminders_user_ids.copy()
   # loop through every reactions
@@ -146,6 +154,7 @@ async def find_users_to_endremind(reactions):
         user_ids_to_remind.remove(user.id)
   return user_ids_to_remind
 
+# function to check a reminder message and remind all users who have not reacted
 async def send_endremind(message):
   user_ids = await find_users_to_endremind(message.reactions)
   if len(user_ids):
@@ -156,11 +165,13 @@ async def send_endremind(message):
   else:
     await send_bot_message('No one to remind\nLink: {0}'.format(message.jump_url))
 
+##############################
+
 @client.event
 async def on_ready():
   print('Logged in as {0}'.format(client.user))
   await send_bot_message('{0} entered chat'.format(client.user))
-  await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you"))
+  await client.change_presence(activity=discord.Activity(type=ActivityType.watching, name="you"))
 
 @client.event
 async def on_message(message):
@@ -179,7 +190,6 @@ async def on_message(message):
     await send_startremind('{0} Collect teapot coin')
 
   elif message.content.startswith('$checkremind') and is_author_admin(message):
-    users = []
     tokens = message.content.split(' ')
     if len(tokens) == 2:
       message_id = tokens[1]
@@ -248,8 +258,30 @@ async def on_message(message):
   elif str_contains(message.content, 'spymon'):
     await toggle_reaction(message, '\U0001f47e')
   
-  elif (client.user.mentioned_in(message)) and str_mentions(message.content, client.user.id):
+  elif client.user.mentioned_in(message) and str_mentions(message.content, client.user.id):
     await message.channel.send('Hello {0}'.format(message.author.mention))
 
+##############################
+
+def seconds_since_midnight():
+  now = datetime.now(timezone(timedelta(hours=8)))
+  seconds = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+  return seconds
+
+@tasks.loop(seconds=15)
+async def periodic():
+  periodic.my_count += 1
+  if seconds_since_midnight() < periodic.seconds:
+    # it is currently within task inverval from midnight, send reminder
+    pass
+
+@periodic.before_loop
+async def before_periodic():
+  await client.wait_until_ready()
+  periodic.my_count = 0
+
+##############################
+
 keep_alive()
+periodic.start()
 client.run(token, bot=True)
