@@ -200,7 +200,7 @@ async def on_message(message):
       error = 'Command error!'
     if error != None:
       await message.channel.send(error)
-  
+
   elif message.content.startswith('$react') and is_author_admin(message):
     tokens = message.content.split(' ')
     if len(tokens) == 3:
@@ -254,10 +254,10 @@ async def on_message(message):
   # etc commands    
   elif message.content.startswith('$'):
     await message.channel.send('Command not found!')
-  
+
   elif str_contains(message.content, 'spymon'):
     await toggle_reaction(message, '\U0001f47e')
-  
+
   elif client.user.mentioned_in(message) and str_mentions(message.content, client.user.id):
     await message.channel.send('Hello {0}'.format(message.author.mention))
 
@@ -271,9 +271,10 @@ def seconds_since_midnight():
 @tasks.loop(seconds=15)
 async def periodic():
   periodic.my_count += 1
+
+  # it is currently within task inverval from midnight, send reminder
   if seconds_since_midnight() < periodic.seconds:
-    # it is currently within task inverval from midnight, send reminder
-    pass
+    await send_startremind('{0} Check in')
 
 @periodic.before_loop
 async def before_periodic():
