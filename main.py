@@ -78,6 +78,13 @@ async def send_startremind(message_str):
   await new_message.add_reaction('\u2705')
   return new_message
 
+# function to check a reminder message and remind all users who have not reacted
+async def send_endremind(message, user_ids):
+  message_str = ''
+  for user_id in user_ids:
+    message_str += (get_usermention_str(user_id) + ' ')
+  return await message.reply(message_str, mention_author=False)
+
 # function to find a message by id
 async def find_message(message_id):
   message = None
@@ -154,16 +161,34 @@ async def find_users_to_endremind(reactions):
         user_ids_to_remind.remove(user.id)
   return user_ids_to_remind
 
-# function to check a reminder message and remind all users who have not reacted
-async def send_endremind(message):
-  user_ids = await find_users_to_endremind(message.reactions)
-  if len(user_ids):
-    buffer = ''
-    for user_id in user_ids:
-      buffer += (get_usermention_str(user_id) + ' ')
-    await message.reply(buffer)
+# function to check a reminder, it performs different actions depending of the input parameter used
+# - if message_str is specified:
+#   -- the message string will be searched in the reminder channel
+#   -- if a matching message (sent by bot and is within today) is found, all users who have not reacted to this message will be sent a reminder
+# - if message_id is specified:
+#   -- the message string will be searched in the reminder channel
+#   -- if a matching message is found, all users who have not reacted to this message will be sent a reminder
+# - if message is specified:
+#   - all users who have not reacted to this message will be sent a reminder
+async def check_remind(message_str=None, message_id=None, message=None):
+  error = None
+  if (message == None) and (message_id == None) and (message_str == None):
+    error = 'Parameter error!'
   else:
-    await send_bot_message('No one to remind\nLink: {0}'.format(message.jump_url))
+    #find message by string
+    if message_str != None:
+      pass
+    # find message by id
+    elif message_id != None:
+      message, error = await find_message(message_id)
+    # lastly, check message and send reminder
+    if message != None:
+      user_ids = await find_users_to_endremind(message.reactions)
+      if len(user_ids):
+        await send_endremind(message, user_ids)
+      else:
+        error = 'No one to remind\nLink: {0}'.format(message.jump_url)
+  return error
 
 ##############################
 
@@ -191,11 +216,10 @@ async def on_message(message):
 
   elif message.content.startswith('$checkremind') and is_author_admin(message):
     tokens = message.content.split(' ')
+    error = None
     if len(tokens) == 2:
       message_id = tokens[1]
-      message, error = await find_message(message_id)
-      if message != None:
-        await send_endremind(message)
+      error = await check_remind(message_id=message_id)
     else:
       error = 'Command error!'
     if error != None:
@@ -203,6 +227,7 @@ async def on_message(message):
 
   elif message.content.startswith('$react') and is_author_admin(message):
     tokens = message.content.split(' ')
+    error = None
     if len(tokens) == 3:
       message_id, emoji = tokens[1], tokens[2]
       reacted_message, reaction, error = await find_and_toggle_reaction(message_id, emoji)
@@ -268,7 +293,7 @@ def seconds_since_midnight():
   seconds = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
   return seconds
 
-@tasks.loop(seconds=15)
+@tasks.loop(seconds=10)
 async def periodic():
   periodic.my_count += 1
 
