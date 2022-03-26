@@ -204,18 +204,19 @@ async def on_message(message):
   if message.author == client.user:
     return
 
+  tokens = message.content.split(' ')
+
   # admin commands
-  if (message.content == '$daily') and is_author_admin(message):
+  if (tokens[0] == '$daily') and is_author_admin(message):
     await send_startremind('{0} Check in')
 
-  elif (message.content == '$weekly') and is_author_admin(message):
+  elif (tokens[0] == '$weekly') and is_author_admin(message):
     await send_startremind('{0} Buy omni-ubiquity net & do parametric transformer')
 
-  elif (message.content == '$teapot') and is_author_admin(message):
+  elif (tokens[0] == '$teapot') and is_author_admin(message):
     await send_startremind('{0} Collect teapot coin')
 
-  elif message.content.startswith('$checkremind') and is_author_admin(message):
-    tokens = message.content.split(' ')
+  elif (tokens[0] == '$checkremind') and is_author_admin(message):
     error = None
     if len(tokens) == 2:
       message_id = tokens[1]
@@ -225,8 +226,7 @@ async def on_message(message):
     if error != None:
       await message.channel.send(error)
 
-  elif message.content.startswith('$react') and is_author_admin(message):
-    tokens = message.content.split(' ')
+  elif (tokens[0] == '$react') and is_author_admin(message):
     error = None
     if len(tokens) == 3:
       message_id, emoji = tokens[1], tokens[2]
@@ -239,7 +239,7 @@ async def on_message(message):
     else:
       await message.channel.send(error)
 
-  elif message.content.startswith('$debug') and is_author_admin(message):
+  elif (tokens[0] == '$debug') and is_author_admin(message):
     # print the content to console
     print('Content: {0}'.format(message.content))
     # print user mentions if any
@@ -258,10 +258,10 @@ async def on_message(message):
       print('    {0}'.format(buffer))
 
   # all member commands
-  elif (message.content == '$roll'):
+  elif (tokens[0] == '$roll'):
     await message.reply(random.choices(gi_characters, weights=gi_char_rates)[0])
 
-  elif (message.content == '$roll10'):
+  elif (tokens[0] == '$roll10'):
     rolls = random.choices(gi_characters, weights=gi_char_rates, k=10)
     # format 1 : 10 new lines
     # formatted_1 = "\n".join(rolls)
