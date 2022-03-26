@@ -2,7 +2,7 @@ import os
 import random
 from datetime import datetime, timedelta, timezone
 import discord
-from discord import ActivityType, NotFound, Forbidden
+from discord import ActivityType, ChannelType, NotFound, Forbidden
 from discord.ext import tasks
 from keep_alive import keep_alive
 
