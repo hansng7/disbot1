@@ -1,6 +1,6 @@
 import os
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 import discord
 from discord import ActivityType, ChannelType, NotFound, Forbidden
 from discord.ext import tasks
@@ -294,17 +294,25 @@ async def on_message(message):
 
 ##############################
 
-def seconds_since_midnight():
-  now = datetime.now(timezone(timedelta(hours=8)))
-  seconds = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+# function to calculate the total seconds since the specified time (timezone aware)
+def seconds_since_time(time):
+  now = datetime.now(time.tzinfo)
+  ref = datetime.combine(now.date(), time, time.tzinfo)
+  seconds = (now - ref).total_seconds()
   return seconds
+
+# function check if the time now is within (hour:minute:second) and (hour:minute:second+cutoff_seconds-1) in timezone UTC+8
+def is_time_now(hour, minute, second, cutoff_seconds):
+  utc_8 = timezone(timedelta(hours=8))
+  ref = time(hour, minute, second, 0, utc_8)
+  return True if (seconds_since_time(ref) < cutoff_seconds) else False
 
 @tasks.loop(seconds=10)
 async def periodic():
   periodic.my_count += 1
 
   # it is currently within task inverval from midnight, send reminder
-  if seconds_since_midnight() < periodic.seconds:
+  if is_time_now(0, 0, 0, periodic.seconds):
     await send_startremind('{0} Check in')
 
 @periodic.before_loop
