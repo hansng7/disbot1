@@ -196,7 +196,7 @@ async def check_remind(message_str=None, message_id=None, message=None):
 async def on_ready():
   print('Logged in as {0}'.format(client.user))
   await send_bot_message('{0} entered chat'.format(client.user))
-  await client.change_presence(activity=discord.Activity(type=ActivityType.watching, name="you"))
+  await client.change_presence(activity=discord.Activity(type=ActivityType.watching, name='you'))
 
 @client.event
 async def on_message(message):
@@ -239,6 +239,33 @@ async def on_message(message):
     else:
       await message.channel.send(error)
 
+  elif (tokens[0] == '$presence') and is_author_admin(message):
+    activity_type = None
+    activity_name = ''
+    activity_str = ''
+    error = None
+    if len(tokens) >= 3:
+      if tokens[1] == 'playing':
+        activity_type = ActivityType.playing
+        activity_str = tokens[1] + ' '
+      elif tokens[1] == 'watching':
+        activity_type = ActivityType.watching
+        activity_str = tokens[1] + ' '
+      elif tokens[1] == 'competing':
+        activity_type = ActivityType.competing
+        activity_str = tokens[1] + ' in'
+      else:
+        error = 'Command error!'
+      activity_name = ' '.join(tokens[2:])
+      activity_str += activity_name
+    else:
+      error = 'Command error!'
+    if error == None:
+      await client.change_presence(activity=discord.Activity(type=activity_type, name=activity_name))
+      await message.channel.send('I\'m now ' + activity_str)
+    else:
+      await message.channel.send(error)
+
   elif (tokens[0] == '$debug') and is_author_admin(message):
     # print the content to console
     print('Content: {0}'.format(message.content))
@@ -270,7 +297,7 @@ async def on_message(message):
     rolls.insert(5, rolls.pop(7))
     rolls.insert(7, rolls.pop(8))
     # format 1 : 10 new lines
-    # formatted_1 = "\n".join(rolls)
+    # formatted_1 = '\n'.join(rolls)
     # format 2 : 2 columns by 5 lines inside code block
     formatted_2 = ''
     count_even = True
