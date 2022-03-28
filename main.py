@@ -5,6 +5,7 @@ import discord
 from discord import ActivityType, ChannelType, NotFound, Forbidden
 from discord.ext import tasks
 from keep_alive import keep_alive
+from replit import db
 
 # gi_characters = [ 'Albedo' , 'Aloy' , 'Amber' , 'Arataki Itto' , 'Barbara' , 'Beidou' , 'Bennett' , 'Chongyun' , 'Diluc' , 'Diona' , 'Eula' , 'Fischl' , 'Ganyu' , 'Gorou' , 'Hu Tao' , 'Jean' , 'Kaedehara Kazuha' , 'Kaeya' , 'Kamisato Ayaka' , 'Kamisato Ayato' , 'Keqing' , 'Klee' , 'Kujou Sara' , 'Lisa' , 'Mona' , 'Ningguang' , 'Noelle' , 'Qiqi' , 'Raiden Shogun' , 'Razor' , 'Rosaria' , 'Sangonomiya Kokomi' , 'Sayu' , 'Shenhe' , 'Sucrose' , 'Tartaglia' , 'Thoma' , 'Traveler' , 'Venti' , 'Xiangling' , 'Xiao' , 'Xingqiu' , 'Xinyan' , 'Yae Miko' , 'Yanfei' , 'Yoimiya' , 'Yun Jin' , 'Zhongli' ]
 gi_characters = [ 'Albedo (5☆)' , 'Aloy (5☆)' , 'Amber (4☆)' , 'Itto (5☆)' , 'Barbara (4☆)' , 'Beidou (4☆)' , 'Bennett (4☆)' , 'Chongyun (4☆)' , 'Diluc (5☆)' , 'Diona (4☆)' , 'Eula (5☆)' , 'Fischl (4☆)' , 'Ganyu (5☆)' , 'Gorou (4☆)' , 'Hu Tao (5☆)' , 'Jean (5☆)' , 'Kazuha (5☆)' , 'Kaeya (4☆)' , 'Ayaka (5☆)' , 'Ayato (5☆)' , 'Keqing (5☆)' , 'Klee (5☆)' , 'Sara (4☆)' , 'Lisa (4☆)' , 'Mona (5☆)' , 'Ningguang (4☆)' , 'Noelle (4☆)' , 'Paimon (6☆)' , 'Qiqi (5☆)' , 'Raiden (5☆)' , 'Razor (4☆)' , 'Rosaria (4☆)' , 'Kokomi (5☆)' , 'Sayu (4☆)' , 'Shenhe (5☆)' , 'Sucrose (4☆)' , 'Tartaglia (5☆)' , 'Thoma (4☆)' , 'Traveler (5☆)' , 'Venti (5☆)' , 'Xiangling (4☆)' , 'Xiao (5☆)' , 'Xingqiu (4☆)' , 'Xinyan (4☆)' , 'Yae (5☆)' , 'Yanfei (4☆)' , 'Yoimiya (5☆)' , 'Yun Jin (4☆)' , 'Zhongli (5☆)' ]
@@ -15,6 +16,46 @@ reminders_channel_id = 854328114837585921
 bot_channel_id = 955128791204765797
 travelers_role_id = 872748500033630218
 reminders_user_ids = [ 808939288774705182 , 359961846096330752 , 848608705843167282 ]
+
+##############################
+
+async def set_presence(activity_type_str, activity_name):
+  activity = None
+  error = None
+  activity_type = None
+  activity_str = ''
+  # process activity type
+  if activity_type_str == 'playing':
+    activity_type = ActivityType.playing
+    activity_str = activity_type_str + ' ' + activity_name
+  elif activity_type_str == 'watching':
+    activity_type = ActivityType.watching
+    activity_str = activity_type_str + ' ' + activity_name
+  elif activity_type_str == 'competing':
+    activity_type = ActivityType.competing
+    activity_str = activity_type_str + ' in ' + activity_name
+  else:
+    error = 'Invalid activity type!'
+  # set presence if no error found
+  if error == None:
+    activity = discord.Activity(type=activity_type, name=activity_name)
+    await client.change_presence(activity=activity)
+  # save presence data to database
+  db['presence'] = { 'type' : activity_type_str, 'name' : activity_name }
+  return activity_str, error
+
+async def restore_presence():
+  error = None
+  activity_str = ''
+  # look for presence data in database
+  if 'presence' in db.keys():
+    activity_type_str = db['presence']['type']
+    activity_name = db['presence']['name']
+    # set presence based on presence data in database
+    activity_str, error = await set_presence(activity_type_str, activity_name)
+  else:
+    error = 'Existing presence data not found!'
+  return activity_str, error
 
 ##############################
 
@@ -175,7 +216,7 @@ async def check_remind(message_str=None, message_id=None, message=None):
   if (message == None) and (message_id == None) and (message_str == None):
     error = 'Parameter error!'
   else:
-    #find message by string
+    # [TODO] find message by string
     if message_str != None:
       pass
     # find message by id
@@ -196,7 +237,16 @@ async def check_remind(message_str=None, message_id=None, message=None):
 async def on_ready():
   print('Logged in as {0}'.format(client.user))
   await send_bot_message('{0} entered chat'.format(client.user))
-  await client.change_presence(activity=discord.Activity(type=ActivityType.watching, name='you'))
+  # initialize presence
+  activity_str, error = await restore_presence()
+  if error != None:
+    # set new presence if not found
+    print('Presence: ' + error)
+    activity_str, error = await set_presence('watching', 'you')
+  if error == None:
+    print('Presence: ' + activity_str)
+  else:
+    print('Presence: ' + error)
 
 @client.event
 async def on_message(message):
@@ -245,23 +295,12 @@ async def on_message(message):
     activity_str = ''
     error = None
     if len(tokens) >= 3:
-      if tokens[1] == 'playing':
-        activity_type = ActivityType.playing
-        activity_str = tokens[1] + ' '
-      elif tokens[1] == 'watching':
-        activity_type = ActivityType.watching
-        activity_str = tokens[1] + ' '
-      elif tokens[1] == 'competing':
-        activity_type = ActivityType.competing
-        activity_str = tokens[1] + ' in'
-      else:
-        error = 'Command error!'
+      activity_type = tokens[1]
       activity_name = ' '.join(tokens[2:])
-      activity_str += activity_name
+      activity_str, error = await set_presence(activity_type, activity_name)
     else:
       error = 'Command error!'
     if error == None:
-      await client.change_presence(activity=discord.Activity(type=activity_type, name=activity_name))
       await message.channel.send('I\'m now ' + activity_str)
     else:
       await message.channel.send(error)
