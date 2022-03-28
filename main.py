@@ -84,7 +84,7 @@ def str_contains(string, substring, case_sensitive=False):
   if case_sensitive:
     return substring in string
   else:
-    return string.lower().find(substring) >= 0
+    return substring.lower() in string.lower()
 
 # check if a string mentions an id (can be user, role, channel)
 def str_mentions(string, id):
@@ -143,27 +143,77 @@ async def send_endremind(message, user_ids):
   return await message.reply(message_str, mention_author=False)
 
 # function to find a message by id
-async def find_message(message_id):
+async def find_message_by_id(message_id, channel_id=None):
   message = None
   error = None
   if type(message_id) != int:
     error = 'Parameter error!'
   else:
-    for channel in client.get_all_channels():
-      # only search in text channels
-      if channel.type == ChannelType.text:
-        try:
-          message = await channel.fetch_message(message_id)
+    if channel_id == None:
+      for channel in client.get_all_channels():
+        # only search in text channels
+        if channel.type == ChannelType.text:
+          try:
+            message = await channel.fetch_message(message_id)
+            break
+          # ignore not found and forbidden errors
+          except (NotFound, Forbidden):
+            pass
+          except Exception as e:
+            error = 'Something went wrong!'
+            print(e)
+            break
+      # if message not found
+      if (error == None) and (message == None):
+        error = 'Message not found!'
+    else:
+      channel = client.get_channel(channel_id)
+      try:
+        message = await channel.fetch_message(message_id)
+      except NotFound:
+        error = 'Message not found!'
+      except Exception as e:
+        error = 'Something went wrong!'
+        print(e)
+  return message, error
+
+# function to find a message by content in the specified channel id
+async def find_message_by_content(string, channel_id, author_id=None, limit_today=True):
+  message = None
+  error = None
+  history_after = None
+  if limit_today:
+    # get midnight time in UTC-8
+    utc_8 = timezone(timedelta(hours=8))
+    now = datetime.now(utc_8)
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    # convert back to UTC
+    midnight = midnight.astimezone(timezone.utc)
+    # remove the timezone attribute to make it timezone-naive
+    midnight = midnight.replace(tzinfo=None)
+    history_after = midnight
+  # get channel by id
+  try:
+    channel = client.get_channel(channel_id)
+  except Exception as e:
+    error = 'Something went wrong!'
+    print(e)
+  # get message history (use default limit of 100)
+  if error == None:
+    try:
+      messages = await channel.history(after=history_after).flatten()
+    except Exception as e:
+      error = 'Something went wrong!'
+      print(e)
+  # find the string in message history
+  if error == None:
+    for msg in messages:
+      # match message content
+      if str_contains(msg.content, string):
+        # match author id
+        if (author_id == None) or ((author_id != None) and (msg.author.id == author_id)):
+          message = msg
           break
-        # ignore not found and forbidden errors
-        except (NotFound, Forbidden):
-          pass
-        except Exception as e:
-          error = 'Something went wrong!'
-          print(e)
-          break
-    if message == None:
-      error = 'Message not found!'
   return message, error
 
 # function to add/remove reaction to a message
@@ -208,7 +258,7 @@ async def find_and_toggle_reaction(message_id, emoji):
     error = 'Parameter error!'
   else:
     # find the message
-    message, error = await find_message(message_id)
+    message, error = await find_message_by_id(message_id)
     # toggle the reaction if the message is found
     if message != None:
       reaction, error = await toggle_reaction(message, emoji)
@@ -237,15 +287,18 @@ async def find_users_to_endremind(reactions):
 #   -- if a matching message is found, all users who have not reacted to this message will be sent a reminder
 # - if input is of discord.Message type:
 #   - all users who have not reacted to this message will be sent a reminder
-async def check_remind(message):
+async def check_remind(message, author=None):
   error = None
-  # [TODO] find message by string
+  # find message by string
   if type(message) == str:
-    pass
+    found_message, error = await find_message_by_content(message, reminders_channel_id, author)
+    if error == None:
+      error = await check_remind(found_message)
   # find message by id
   elif type(message) == int:
-    found_message, error = await find_message(message)
-    error = await check_remind(found_message)
+    found_message, error = await find_message_by_id(message, reminders_channel_id)
+    if error == None:
+      error = await check_remind(found_message)
   # lastly, check message and send reminder
   elif type(message) == discord.Message:
     user_ids = await find_users_to_endremind(message.reactions)
@@ -404,15 +457,17 @@ def seconds_since_time(time):
 def is_time_now(hour, minute, second, cutoff_seconds):
   utc_8 = timezone(timedelta(hours=8))
   ref = time(hour, minute, second, 0, utc_8)
-  return True if (seconds_since_time(ref) < cutoff_seconds) else False
+  return True if (0 <= seconds_since_time(ref) < cutoff_seconds) else False
 
 @tasks.loop(seconds=10)
 async def periodic():
   periodic.my_count += 1
-
   # it is currently within task inverval from midnight, send reminder
   if is_time_now(0, 0, 0, periodic.seconds):
     await send_startremind('{0} Check in')
+  # it is currently within task inverval from 23:00:00, check reminder
+  elif is_time_now(23, 0, 0, periodic.seconds):
+    await check_remind('Check in', client.user.id)
 
 @periodic.before_loop
 async def before_periodic():
