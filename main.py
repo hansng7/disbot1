@@ -28,6 +28,9 @@ async def set_presence(activity_type_str, activity_name):
   if activity_type_str == 'playing':
     activity_type = ActivityType.playing
     activity_str = activity_type_str + ' ' + activity_name
+  elif activity_type_str == 'listening':
+    activity_type = ActivityType.listening
+    activity_str = activity_type_str + ' to ' + activity_name
   elif activity_type_str == 'watching':
     activity_type = ActivityType.watching
     activity_str = activity_type_str + ' ' + activity_name
