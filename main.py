@@ -20,9 +20,7 @@ reminders_user_ids = [ 808939288774705182 , 359961846096330752 , 848608705843167
 ##############################
 
 async def set_presence(activity_type_str, activity_name):
-  activity = None
   error = None
-  activity_type = None
   activity_str = ''
   # process activity type
   if activity_type_str == 'playing':
@@ -63,11 +61,11 @@ async def restore_presence():
 ##############################
 
 # same as discord.User.mention
-def get_mention_str(id):
+def get_usermention_str(id):
   return '<@{0}>'.format(id)
 
 # alternative to discord.User.mention
-def get_usermention_str(id):
+def get_nicknamemention_str(id):
   return '<@!{0}>'.format(id)
 
 # same as discord.Role.mention
@@ -90,9 +88,9 @@ def str_contains(string, substring, case_sensitive=False):
 
 # check if a string mentions an id (can be user, role, channel)
 def str_mentions(string, id):
-  if get_mention_str(id) in string:
+  if get_usermention_str(id) in string:
     return True
-  elif get_usermention_str(id) in string:
+  elif get_nicknamemention_str(id) in string:
     return True
   elif get_rolemention_str(id) in string:
     return True
@@ -101,6 +99,21 @@ def str_mentions(string, id):
   else:
     return False
 
+# function to return a discord id in int type if it is valid
+def parse_discord_id(id):
+  # convert to int type
+  if type(id) == str:
+    try:
+      discord_id = int(id)
+    except:
+      discord_id = None
+  elif type(id) == int:
+    discord_id = id
+  # validate the id (it seems to have 17 or 18 digits)
+  if (discord_id != None) and (discord_id < 10000000000000000):
+    discord_id = None
+  return discord_id
+    
 ##############################
 
 client = discord.Client()
@@ -133,29 +146,32 @@ async def send_endremind(message, user_ids):
 async def find_message(message_id):
   message = None
   error = None
-  for channel in client.get_all_channels():
-    # only search in text channels
-    if channel.type == ChannelType.text:
-      try:
-        message = await channel.fetch_message(message_id)
-        break
-      # ignore not found and forbidden errors
-      except (NotFound, Forbidden):
-        pass
-      except Exception as e:
-        error = 'Something went wrong!'
-        print(e)
-        break
-  if message == None:
-    error = 'Message not found!'
+  if type(message_id) != int:
+    error = 'Parameter error!'
+  else:
+    for channel in client.get_all_channels():
+      # only search in text channels
+      if channel.type == ChannelType.text:
+        try:
+          message = await channel.fetch_message(message_id)
+          break
+        # ignore not found and forbidden errors
+        except (NotFound, Forbidden):
+          pass
+        except Exception as e:
+          error = 'Something went wrong!'
+          print(e)
+          break
+    if message == None:
+      error = 'Message not found!'
   return message, error
 
 # function to add/remove reaction to a message
 async def toggle_reaction(message, emoji):
   # calling remove_reaction() for non-existence reaction does not cause error, therefore it cannot be used to determine if the reaction is already there
-  reaction_found = False
   reaction_active = False
   error = None
+  reaction_found = False
   for reaction in message.reactions:
     if reaction.emoji == emoji:
       reaction_users = await reaction.users().flatten()
@@ -185,12 +201,17 @@ async def toggle_reaction(message, emoji):
 
 # function to find a message by id and add/remove reaction to it
 async def find_and_toggle_reaction(message_id, emoji):
-  message, error = await find_message(message_id)
-  # toggle the reaction if the message is found
-  if message != None:
-    reaction, error = await toggle_reaction(message, emoji)
+  message = None
+  reaction = False
+  error = None
+  if type(message_id) != int:
+    error = 'Parameter error!'
   else:
-    reaction = False
+    # find the message
+    message, error = await find_message(message_id)
+    # toggle the reaction if the message is found
+    if message != None:
+      reaction, error = await toggle_reaction(message, emoji)
   return message, reaction, error
 
 # function to find all users who have not reacted to a reminder message's reactions
@@ -205,33 +226,35 @@ async def find_users_to_endremind(reactions):
         user_ids_to_remind.remove(user.id)
   return user_ids_to_remind
 
-# function to check a reminder, it performs different actions depending of the input parameter used
-# - if message_str is specified:
-#   -- the message string will be searched in the reminder channel
+# function to check a reminder, it performs different actions depending of the input parameter type
+# - if input is of str type:
+#   -- the input will be assumed to be the message content
+#   -- the message content will be searched in the reminder channel
 #   -- if a matching message (sent by bot and is within today) is found, all users who have not reacted to this message will be sent a reminder
-# - if message_id is specified:
-#   -- the message string will be searched in the reminder channel
+# - if input is of int type:
+#   -- the input will be assumed to be the message id
+#   -- the message id will be searched in the reminder channel
 #   -- if a matching message is found, all users who have not reacted to this message will be sent a reminder
-# - if message is specified:
+# - if input is of discord.Message type:
 #   - all users who have not reacted to this message will be sent a reminder
-async def check_remind(message_str=None, message_id=None, message=None):
+async def check_remind(message):
   error = None
-  if (message == None) and (message_id == None) and (message_str == None):
-    error = 'Parameter error!'
+  # [TODO] find message by string
+  if type(message) == str:
+    pass
+  # find message by id
+  elif type(message) == int:
+    found_message, error = await find_message(message)
+    error = await check_remind(found_message)
+  # lastly, check message and send reminder
+  elif type(message) == discord.Message:
+    user_ids = await find_users_to_endremind(message.reactions)
+    if len(user_ids):
+      await send_endremind(message, user_ids)
+    else:
+      error = 'No one to remind\nLink: {0}'.format(message.jump_url)
   else:
-    # [TODO] find message by string
-    if message_str != None:
-      pass
-    # find message by id
-    elif message_id != None:
-      message, error = await find_message(message_id)
-    # lastly, check message and send reminder
-    if message != None:
-      user_ids = await find_users_to_endremind(message.reactions)
-      if len(user_ids):
-        await send_endremind(message, user_ids)
-      else:
-        error = 'No one to remind\nLink: {0}'.format(message.jump_url)
+    error = 'Parameter error!'
   return error
 
 ##############################
@@ -272,8 +295,11 @@ async def on_message(message):
   elif (tokens[0] == '$checkremind') and is_author_admin(message):
     error = None
     if len(tokens) == 2:
-      message_id = tokens[1]
-      error = await check_remind(message_id=message_id)
+      message_id = parse_discord_id(tokens[1])
+      if message_id != None:
+        error = await check_remind(message_id)
+      else:
+        error = 'Wrong ID format!'
     else:
       error = 'Command error!'
     if error != None:
@@ -282,8 +308,12 @@ async def on_message(message):
   elif (tokens[0] == '$react') and is_author_admin(message):
     error = None
     if len(tokens) == 3:
-      message_id, emoji = tokens[1], tokens[2]
-      reacted_message, reaction, error = await find_and_toggle_reaction(message_id, emoji)
+      message_id = parse_discord_id(tokens[1])
+      emoji = tokens[2]
+      if message_id != None:
+        reacted_message, reaction, error = await find_and_toggle_reaction(message_id, emoji)
+      else:
+        error = 'Wrong ID format!'
     else:
       error = 'Command error!'
     if error == None:
