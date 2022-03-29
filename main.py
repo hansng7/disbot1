@@ -1,5 +1,6 @@
 import os
 import random
+import re
 from datetime import datetime, time, timedelta, timezone
 import discord
 from discord import ActivityType, ChannelType, NotFound, Forbidden
@@ -11,13 +12,12 @@ from replit import db
 gi_characters = [ 'Albedo (5☆)' , 'Aloy (5☆)' , 'Amber (4☆)' , 'Itto (5☆)' , 'Barbara (4☆)' , 'Beidou (4☆)' , 'Bennett (4☆)' , 'Chongyun (4☆)' , 'Diluc (5☆)' , 'Diona (4☆)' , 'Eula (5☆)' , 'Fischl (4☆)' , 'Ganyu (5☆)' , 'Gorou (4☆)' , 'Hu Tao (5☆)' , 'Jean (5☆)' , 'Kazuha (5☆)' , 'Kaeya (4☆)' , 'Ayaka (5☆)' , 'Ayato (5☆)' , 'Keqing (5☆)' , 'Klee (5☆)' , 'Sara (4☆)' , 'Lisa (4☆)' , 'Mona (5☆)' , 'Ningguang (4☆)' , 'Noelle (4☆)' , 'Paimon (6☆)' , 'Qiqi (5☆)' , 'Raiden (5☆)' , 'Razor (4☆)' , 'Rosaria (4☆)' , 'Kokomi (5☆)' , 'Sayu (4☆)' , 'Shenhe (5☆)' , 'Sucrose (4☆)' , 'Tartaglia (5☆)' , 'Thoma (4☆)' , 'Traveler (5☆)' , 'Venti (5☆)' , 'Xiangling (4☆)' , 'Xiao (5☆)' , 'Xingqiu (4☆)' , 'Xinyan (4☆)' , 'Yae (5☆)' , 'Yanfei (4☆)' , 'Yoimiya (5☆)' , 'Yun Jin (4☆)' , 'Zhongli (5☆)' ]
 gi_char_rates = [ 0.005, 0.005, 0.038, 0.005, 0.038, 0.038, 0.038, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.005, 0.005, 0.038, 0.005, 0.005, 0.005, 0.005, 0.038, 0.038, 0.005, 0.038, 0.038, 0.001, 0.005, 0.005, 0.038, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.005, 0.038, 0.005, 0.038, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005 ]
 
-token = os.environ['TOKEN']
 reminders_channel_id = 854328114837585921
 bot_channel_id = 955128791204765797
 travelers_role_id = 872748500033630218
 reminders_user_ids = [ 808939288774705182 , 359961846096330752 , 848608705843167282 ]
 
-##############################
+########## database ##########
 
 async def set_presence(activity_type_str, activity_name):
   error = None
@@ -58,7 +58,7 @@ async def restore_presence():
     error = 'Existing presence data not found!'
   return activity_str, error
 
-##############################
+######### utilities ##########
 
 # same as discord.User.mention
 def get_usermention_str(id):
@@ -114,7 +114,7 @@ def parse_discord_id(id):
     discord_id = None
   return discord_id
     
-##############################
+###### functionalities #######
 
 client = discord.Client()
 
@@ -310,7 +310,23 @@ async def check_remind(message, author=None):
     error = 'Parameter error!'
   return error
 
-##############################
+########### events ###########
+
+# parse and return the command and subcommands (in a list)
+def parse_command(string):
+  tokens = string.split(' ')
+  if len(tokens) >= 1:
+    # command must:
+    # - starts with $ and followed by 2 lowercase alphabets
+    # - ends with space or EOL
+    # - not contain any symbols
+    pattern = re.compile(r'^\$[a-z]{2,}[a-z0-9]*$')
+    command = pattern.search(tokens[0])
+    if command != None:
+      command = command.group(0)
+      tokens.pop(0)
+      return command, tokens
+  return None, []
 
 @client.event
 async def on_ready():
@@ -333,118 +349,122 @@ async def on_message(message):
   if message.author == client.user:
     return
 
-  tokens = message.content.split(' ')
+  # try to parse message as a command
+  command, subcommands = parse_command(message.content)
 
-  # admin commands
-  if (tokens[0] == '$daily') and is_author_admin(message):
-    await send_startremind('{0} Check in')
+  # if command is found
+  if command != None:
+    # admin commands
+    if (command == '$daily') and is_author_admin(message):
+      await send_startremind('{0} Check in')
 
-  elif (tokens[0] == '$weekly') and is_author_admin(message):
-    await send_startremind('{0} Buy omni-ubiquity net & do parametric transformer')
+    elif (command == '$weekly') and is_author_admin(message):
+      await send_startremind('{0} Buy omni-ubiquity net & do parametric transformer')
 
-  elif (tokens[0] == '$teapot') and is_author_admin(message):
-    await send_startremind('{0} Collect teapot coin')
+    elif (command == '$teapot') and is_author_admin(message):
+      await send_startremind('{0} Collect teapot coin')
 
-  elif (tokens[0] == '$checkremind') and is_author_admin(message):
-    error = None
-    if len(tokens) == 2:
-      message_id = parse_discord_id(tokens[1])
-      if message_id != None:
-        error = await check_remind(message_id)
+    elif (command == '$checkremind') and is_author_admin(message):
+      error = None
+      if len(subcommands) == 1:
+        message_id = parse_discord_id(subcommands[0])
+        if message_id != None:
+          error = await check_remind(message_id)
+        else:
+          error = 'Wrong ID format!'
       else:
-        error = 'Wrong ID format!'
-    else:
-      error = 'Command error!'
-    if error != None:
-      await message.channel.send(error)
+        error = 'Command error!'
+      if error != None:
+        await message.channel.send(error)
 
-  elif (tokens[0] == '$react') and is_author_admin(message):
-    error = None
-    if len(tokens) == 3:
-      message_id = parse_discord_id(tokens[1])
-      emoji = tokens[2]
-      if message_id != None:
-        reacted_message, reaction, error = await find_and_toggle_reaction(message_id, emoji)
+    elif (command == '$react') and is_author_admin(message):
+      error = None
+      if len(subcommands) == 2:
+        message_id = parse_discord_id(subcommands[0])
+        emoji = subcommands[1]
+        if message_id != None:
+          reacted_message, reaction, error = await find_and_toggle_reaction(message_id, emoji)
+        else:
+          error = 'Wrong ID format!'
       else:
-        error = 'Wrong ID format!'
+        error = 'Command error!'
+      if error == None:
+        reaction_status = 'added' if reaction else 'removed'
+        await message.channel.send('Reaction {0} {1}\nLink: {2}'.format(emoji, reaction_status, reacted_message.jump_url))
+      else:
+        await message.channel.send(error)
+
+    elif (command == '$presence') and is_author_admin(message):
+      activity_type = None
+      activity_name = ''
+      activity_str = ''
+      error = None
+      if len(subcommands) >= 2:
+        activity_type = subcommands[0]
+        activity_name = ' '.join(subcommands[1:])
+        activity_str, error = await set_presence(activity_type, activity_name)
+      else:
+        error = 'Command error!'
+      if error == None:
+        await message.channel.send('I\'m now ' + activity_str)
+      else:
+        await message.channel.send(error)
+
+    elif (command == '$debug') and is_author_admin(message):
+      # print the content to console
+      print('Content: {0}'.format(message.content))
+      # print user mentions if any
+      if len(message.mentions):
+        print('User: {0}'.format(message.mentions))
+        buffer = ''
+        for user in message.mentions:
+          buffer += (user.mention + ' ')
+        print('    {0}'.format(buffer))
+      # print role mentions if any
+      if len(message.role_mentions):
+        print('Role: {0}'.format(message.role_mentions))
+        buffer = ''
+        for role in message.role_mentions:
+          buffer += (role.mention + ' ')
+        print('    {0}'.format(buffer))
+
+    # all member commands
+    elif (command == '$roll'):
+      await message.reply(random.choices(gi_characters, weights=gi_char_rates)[0])
+
+    elif (command == '$roll10'):
+      rolls = random.choices(gi_characters, weights=gi_char_rates, k=10)
+      # sort the elements and make them vertically ordered in two-column manner [0, 5, 1, 6, 2, 7, 3, 8, 4, 9]
+      rolls.sort()
+      rolls.insert(1, rolls.pop(5))
+      rolls.insert(3, rolls.pop(6))
+      rolls.insert(5, rolls.pop(7))
+      rolls.insert(7, rolls.pop(8))
+      # format 1 : 10 new lines
+      # formatted_1 = '\n'.join(rolls)
+      # format 2 : 2 columns by 5 lines inside code block
+      formatted_2 = ''
+      count_even = True
+      for char in rolls:
+        formatted_2 += char.ljust(17, ' ')
+        count_even = not(count_even)
+        if count_even:
+          formatted_2 += '\n'
+      formatted_2 = '```\n' + formatted_2 + '\n```'
+      await message.reply(formatted_2)
+
+    # invalid commends
     else:
-      error = 'Command error!'
-    if error == None:
-      reaction_status = 'added' if reaction else 'removed'
-      await message.channel.send('Reaction {0} {1}\nLink: {2}'.format(emoji, reaction_status, reacted_message.jump_url))
-    else:
-      await message.channel.send(error)
+      await message.channel.send('Command not found!')
 
-  elif (tokens[0] == '$presence') and is_author_admin(message):
-    activity_type = None
-    activity_name = ''
-    activity_str = ''
-    error = None
-    if len(tokens) >= 3:
-      activity_type = tokens[1]
-      activity_name = ' '.join(tokens[2:])
-      activity_str, error = await set_presence(activity_type, activity_name)
-    else:
-      error = 'Command error!'
-    if error == None:
-      await message.channel.send('I\'m now ' + activity_str)
-    else:
-      await message.channel.send(error)
-
-  elif (tokens[0] == '$debug') and is_author_admin(message):
-    # print the content to console
-    print('Content: {0}'.format(message.content))
-    # print user mentions if any
-    if len(message.mentions):
-      print('User: {0}'.format(message.mentions))
-      buffer = ''
-      for user in message.mentions:
-        buffer += (user.mention + ' ')
-      print('    {0}'.format(buffer))
-    # print role mentions if any
-    if len(message.role_mentions):
-      print('Role: {0}'.format(message.role_mentions))
-      buffer = ''
-      for role in message.role_mentions:
-        buffer += (role.mention + ' ')
-      print('    {0}'.format(buffer))
-
-  # all member commands
-  elif (tokens[0] == '$roll'):
-    await message.reply(random.choices(gi_characters, weights=gi_char_rates)[0])
-
-  elif (tokens[0] == '$roll10'):
-    rolls = random.choices(gi_characters, weights=gi_char_rates, k=10)
-    # sort the elements and make them vertically ordered in two-column manner [0, 5, 1, 6, 2, 7, 3, 8, 4, 9]
-    rolls.sort()
-    rolls.insert(1, rolls.pop(5))
-    rolls.insert(3, rolls.pop(6))
-    rolls.insert(5, rolls.pop(7))
-    rolls.insert(7, rolls.pop(8))
-    # format 1 : 10 new lines
-    # formatted_1 = '\n'.join(rolls)
-    # format 2 : 2 columns by 5 lines inside code block
-    formatted_2 = ''
-    count_even = True
-    for char in rolls:
-      formatted_2 += char.ljust(17, ' ')
-      count_even = not(count_even)
-      if count_even:
-        formatted_2 += '\n'
-    formatted_2 = '```\n' + formatted_2 + '\n```'
-    await message.reply(formatted_2)
-
-  # etc commands    
-  elif message.content.startswith('$'):
-    await message.channel.send('Command not found!')
-
+  # etc functionalities (if message is not a command)
   elif str_contains(message.content, 'spymon'):
     await toggle_reaction(message, '\U0001f47e')
 
   elif client.user.mentioned_in(message) and str_mentions(message.content, client.user.id):
     await message.channel.send('Hello {0}'.format(message.author.mention))
 
-##############################
+########### tasks ############
 
 # function to calculate the total seconds since the specified time (timezone aware)
 def seconds_since_time(time):
@@ -478,4 +498,4 @@ async def before_periodic():
 
 keep_alive()
 periodic.start()
-client.run(token, bot=True)
+client.run(os.environ['TOKEN'], bot=True)
