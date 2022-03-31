@@ -482,11 +482,14 @@ def is_time_now(hour, minute, second, cutoff_seconds):
 @tasks.loop(seconds=10)
 async def periodic():
   periodic.my_count += 1
-  # it is currently within task inverval from midnight, send reminder
-  if is_time_now(0, 0, 0, periodic.seconds):
+  # 00:01:00 => send reminder
+  if is_time_now(0, 1, 0, periodic.seconds):
     await send_startremind('{0} Check in')
-  # it is currently within task inverval from 23:00:00, check reminder
-  elif is_time_now(23, 0, 0, periodic.seconds):
+  # 13:01:00 => check reminder
+  elif is_time_now(13, 1, 0, periodic.seconds):
+    await check_remind('Check in', client.user.id)
+  # 22:01:00 => check reminder
+  elif is_time_now(22, 1, 0, periodic.seconds):
     await check_remind('Check in', client.user.id)
 
 @periodic.before_loop
