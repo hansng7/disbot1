@@ -487,10 +487,14 @@ async def periodic():
     await send_startremind('{0} Check in')
   # 13:01:00 => check reminder
   elif is_time_now(13, 1, 0, periodic.seconds):
-    await check_remind('Check in', client.user.id)
+    error = await check_remind('Check in', client.user.id)
+    if error != None:
+      await send_bot_message(error)
   # 22:01:00 => check reminder
   elif is_time_now(22, 1, 0, periodic.seconds):
-    await check_remind('Check in', client.user.id)
+    error = await check_remind('Check in', client.user.id)
+    if error != None:
+      await send_bot_message(error)
 
 @periodic.before_loop
 async def before_periodic():
