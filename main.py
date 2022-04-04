@@ -359,7 +359,7 @@ async def on_message(message):
       await send_startremind('{0} Check in')
 
     elif (command == '$weekly') and is_author_admin(message):
-      await send_startremind('{0} Buy omni-ubiquity net & do parametric transformer')
+      await send_startremind('{0} Do parametric transformer & buy omni-ubiquity net')
 
     elif (command == '$teapot') and is_author_admin(message):
       await send_startremind('{0} Collect teapot coin')
@@ -473,18 +473,34 @@ def seconds_since_time(time):
   seconds = (now - ref).total_seconds()
   return seconds
 
-# function check if the time now is within (hour:minute:second) and (hour:minute:second+cutoff_seconds-1) in timezone UTC+8
-def is_time_now(hour, minute, second, cutoff_seconds):
+# function to check if today (in the specified timezone) is in the specified list of days of week
+def is_today(days, tzinfo=None):
+  now = datetime.now(tzinfo)
+  for day in days:
+    if now.isoweekday() == day:
+      return True
+  return False
+
+# function to check if the time now is within (hour:minute:second) and (hour:minute:second+cutoff_seconds-1) in timezone UTC+8
+def is_time_now(hour, minute, second, cutoff_seconds=0, days=[]):
   utc_8 = timezone(timedelta(hours=8))
   ref = time(hour, minute, second, 0, utc_8)
-  return True if (0 <= seconds_since_time(ref) < cutoff_seconds) else False
+  if (len(days) == 0) or (is_today(days, utc_8)):
+    return True if (0 <= seconds_since_time(ref) < cutoff_seconds) else False
+  return False
 
 @tasks.loop(seconds=10)
 async def periodic():
   periodic.my_count += 1
-  # 00:01:00 => send reminder
+  # 00:01:00 => send daily reminder
   if is_time_now(0, 1, 0, periodic.seconds):
     await send_startremind('{0} Check in')
+  # 13:01:00 (mon) => send weekly reminder
+  elif is_time_now(13, 1, 0, periodic.seconds, [1]):
+    await send_startremind('{0} Do parametric transformer & buy omni-ubiquity net')
+  # 13:01:00 (tue, thu, sat) => send teapot reminder
+  elif is_time_now(13, 1, 0, periodic.seconds, [2,4,6]):
+    await send_startremind('{0} Collect teapot coin')
   # 13:01:00 => check reminder
   elif is_time_now(13, 1, 0, periodic.seconds):
     error = await check_remind('Check in', client.user.id)
