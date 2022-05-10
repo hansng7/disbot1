@@ -8,9 +8,16 @@ from discord.ext import tasks
 from keep_alive import keep_alive
 from replit import db
 
+########## constant ##########
+
 # gi_characters = [ 'Albedo' , 'Aloy' , 'Amber' , 'Arataki Itto' , 'Barbara' , 'Beidou' , 'Bennett' , 'Chongyun' , 'Diluc' , 'Diona' , 'Eula' , 'Fischl' , 'Ganyu' , 'Gorou' , 'Hu Tao' , 'Jean' , 'Kaedehara Kazuha' , 'Kaeya' , 'Kamisato Ayaka' , 'Kamisato Ayato' , 'Keqing' , 'Klee' , 'Kujou Sara' , 'Lisa' , 'Mona' , 'Ningguang' , 'Noelle' , 'Qiqi' , 'Raiden Shogun' , 'Razor' , 'Rosaria' , 'Sangonomiya Kokomi' , 'Sayu' , 'Shenhe' , 'Sucrose' , 'Tartaglia' , 'Thoma' , 'Traveler' , 'Venti' , 'Xiangling' , 'Xiao' , 'Xingqiu' , 'Xinyan' , 'Yae Miko' , 'Yanfei' , 'Yoimiya' , 'Yun Jin' , 'Zhongli' ]
 gi_characters = [ 'Albedo (5☆)' , 'Aloy (5☆)' , 'Amber (4☆)' , 'Itto (5☆)' , 'Barbara (4☆)' , 'Beidou (4☆)' , 'Bennett (4☆)' , 'Chongyun (4☆)' , 'Diluc (5☆)' , 'Diona (4☆)' , 'Eula (5☆)' , 'Fischl (4☆)' , 'Ganyu (5☆)' , 'Gorou (4☆)' , 'Hu Tao (5☆)' , 'Jean (5☆)' , 'Kazuha (5☆)' , 'Kaeya (4☆)' , 'Ayaka (5☆)' , 'Ayato (5☆)' , 'Keqing (5☆)' , 'Klee (5☆)' , 'Sara (4☆)' , 'Lisa (4☆)' , 'Mona (5☆)' , 'Ningguang (4☆)' , 'Noelle (4☆)' , 'Paimon (6☆)' , 'Qiqi (5☆)' , 'Raiden (5☆)' , 'Razor (4☆)' , 'Rosaria (4☆)' , 'Kokomi (5☆)' , 'Sayu (4☆)' , 'Shenhe (5☆)' , 'Sucrose (4☆)' , 'Tartaglia (5☆)' , 'Thoma (4☆)' , 'Traveler (5☆)' , 'Venti (5☆)' , 'Xiangling (4☆)' , 'Xiao (5☆)' , 'Xingqiu (4☆)' , 'Xinyan (4☆)' , 'Yae (5☆)' , 'Yanfei (4☆)' , 'Yoimiya (5☆)' , 'Yun Jin (4☆)' , 'Zhongli (5☆)' ]
 gi_char_rates = [ 0.005, 0.005, 0.038, 0.005, 0.038, 0.038, 0.038, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.005, 0.005, 0.038, 0.005, 0.005, 0.005, 0.005, 0.038, 0.038, 0.005, 0.038, 0.038, 0.001, 0.005, 0.005, 0.038, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.005, 0.038, 0.005, 0.038, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005 ]
+
+check_in_url = 'https://webstatic-sea.mihoyo.com/ys/event/signin-sea/index.html?act_id=e202102251931481&lang=en-us'
+daily_remind_str = 'Check in\n' + check_in_url
+weekly_remind_str = 'Do parametric transformer & buy omni-ubiquity net'
+teapot_remind_str = 'Collect teapot coin'
 
 reminders_channel_id = 854328114837585921
 bot_channel_id = 955128791204765797
@@ -131,7 +138,7 @@ async def send_broadcast(channel_id, message_str):
 
 # function to send message to reminder channel and add reaction to it
 async def send_startremind(message_str):
-  new_message = await send_broadcast(reminders_channel_id, message_str)
+  new_message = await send_broadcast(reminders_channel_id, '{0} ' + message_str)
   await new_message.add_reaction('\u2705')
   return new_message
 
@@ -356,13 +363,13 @@ async def on_message(message):
   if command != None:
     # admin commands
     if (command == '$daily') and is_author_admin(message):
-      await send_startremind('{0} Check in')
+      await send_startremind(daily_remind_str)
 
     elif (command == '$weekly') and is_author_admin(message):
-      await send_startremind('{0} Do parametric transformer & buy omni-ubiquity net')
+      await send_startremind(weekly_remind_str)
 
     elif (command == '$teapot') and is_author_admin(message):
-      await send_startremind('{0} Collect teapot coin')
+      await send_startremind(teapot_remind_str)
 
     elif (command == '$checkremind') and is_author_admin(message):
       error = None
@@ -494,13 +501,13 @@ async def periodic():
   periodic.my_count += 1
   # 00:01:00 => send daily reminder
   if is_time_now(0, 1, 0, periodic.seconds):
-    await send_startremind('{0} Check in')
+    await send_startremind(daily_remind_str)
   # 13:01:00 (mon) => send weekly reminder
   elif is_time_now(13, 1, 0, periodic.seconds, [1]):
-    await send_startremind('{0} Do parametric transformer & buy omni-ubiquity net')
+    await send_startremind(weekly_remind_str)
   # 13:01:00 (tue, thu, sat) => send teapot reminder
   elif is_time_now(13, 1, 0, periodic.seconds, [2,4,6]):
-    await send_startremind('{0} Collect teapot coin')
+    await send_startremind(teapot_remind_str)
   # 13:01:00 => check reminder
   elif is_time_now(13, 1, 0, periodic.seconds):
     error = await check_remind('Check in', client.user.id)
