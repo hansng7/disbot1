@@ -10,6 +10,53 @@ from replit import db
 
 ########## constant ##########
 
+kqm_guides = {
+  'albedo' : 'https://keqingmains.com/albedo/',
+  'aloy' : 'https://keqingmains.com/aloy/',
+  'amber' : 'https://keqingmains.com/amber/',
+  'ayaka' : 'https://keqingmains.com/ayaka/',
+  'barbara' : 'https://keqingmains.com/barbara/',
+  'beidou' : 'https://keqingmains.com/beidou/',
+  'bennett' : 'https://keqingmains.com/bennett/',
+  'chongyun' : 'https://keqingmains.com/chongyun/',
+  'diluc' : 'https://keqingmains.com/diluc/',
+  'diona' : 'https://keqingmains.com/diona/',
+  'eula' : 'https://keqingmains.com/eula/',
+  'ganyu' : 'https://keqingmains.com/ganyu/',
+  'hutao' : 'https://keqingmains.com/hu-tao/',
+  'itto' : 'https://keqingmains.com/itto/',
+  'jean' : 'https://keqingmains.com/jean/',
+  'kaeya' : 'https://keqingmains.com/kaeya/',
+  'kazuha' : 'https://keqingmains.com/kazuha/',
+  'keqing' : 'https://keqingmains.com/keqing/',
+  'klee' : 'https://keqingmains.com/klee/',
+  'kokomi' : 'https://keqingmains.com/kokomi/',
+  'lisa' : 'https://keqingmains.com/lisa/',
+  'mona' : 'https://keqingmains.com/mona/',
+  'ningguang' : 'https://keqingmains.com/ningguang/',
+  'noelle' : 'https://keqingmains.com/noelle/',
+  'qiqi' : 'https://keqingmains.com/qiqi/',
+  'raiden' : 'https://keqingmains.com/raiden/',
+  'razor' : 'https://keqingmains.com/razor/',
+  'rosaria' : 'https://keqingmains.com/rosaria/',
+  'sara' : 'https://keqingmains.com/sara/',
+  'shenhe' : 'https://keqingmains.com/shenhe/',
+  'sucrose' : 'https://keqingmains.com/sucrose/',
+  'tartaglia' : 'https://keqingmains.com/tartaglia/',
+  'thoma' : 'https://keqingmains.com/thoma/',
+  'traveler' : 'https://keqingmains.com/traveler/',
+  'venti' : 'https://keqingmains.com/venti/',
+  'xiangling' : 'https://keqingmains.com/xiangling/',
+  'xiao' : 'https://keqingmains.com/xiao/',
+  'xingqiu' : 'https://keqingmains.com/xingqiu/',
+  'xinyan' : 'https://keqingmains.com/xinyan/',
+  'yae' : 'https://keqingmains.com/yae/',
+  'yanfei' : 'https://keqingmains.com/yanfei/',
+  'yoimiya' : 'https://keqingmains.com/yoimiya/',
+  'yunjin' : 'https://keqingmains.com/yunjin/',
+  'zhongli' : 'https://keqingmains.com/zhongli/'
+}
+
 # gi_characters = [ 'Albedo' , 'Aloy' , 'Amber' , 'Arataki Itto' , 'Barbara' , 'Beidou' , 'Bennett' , 'Chongyun' , 'Diluc' , 'Diona' , 'Eula' , 'Fischl' , 'Ganyu' , 'Gorou' , 'Hu Tao' , 'Jean' , 'Kaedehara Kazuha' , 'Kaeya' , 'Kamisato Ayaka' , 'Kamisato Ayato' , 'Keqing' , 'Klee' , 'Kujou Sara' , 'Lisa' , 'Mona' , 'Ningguang' , 'Noelle' , 'Qiqi' , 'Raiden Shogun' , 'Razor' , 'Rosaria' , 'Sangonomiya Kokomi' , 'Sayu' , 'Shenhe' , 'Sucrose' , 'Tartaglia' , 'Thoma' , 'Traveler' , 'Venti' , 'Xiangling' , 'Xiao' , 'Xingqiu' , 'Xinyan' , 'Yae Miko' , 'Yanfei' , 'Yoimiya' , 'Yun Jin' , 'Zhongli' ]
 gi_characters = [ 'Albedo (5☆)' , 'Aloy (5☆)' , 'Amber (4☆)' , 'Itto (5☆)' , 'Barbara (4☆)' , 'Beidou (4☆)' , 'Bennett (4☆)' , 'Chongyun (4☆)' , 'Diluc (5☆)' , 'Diona (4☆)' , 'Eula (5☆)' , 'Fischl (4☆)' , 'Ganyu (5☆)' , 'Gorou (4☆)' , 'Hu Tao (5☆)' , 'Jean (5☆)' , 'Kazuha (5☆)' , 'Kaeya (4☆)' , 'Ayaka (5☆)' , 'Ayato (5☆)' , 'Keqing (5☆)' , 'Klee (5☆)' , 'Sara (4☆)' , 'Lisa (4☆)' , 'Mona (5☆)' , 'Ningguang (4☆)' , 'Noelle (4☆)' , 'Paimon (6☆)' , 'Qiqi (5☆)' , 'Raiden (5☆)' , 'Razor (4☆)' , 'Rosaria (4☆)' , 'Kokomi (5☆)' , 'Sayu (4☆)' , 'Shenhe (5☆)' , 'Sucrose (4☆)' , 'Tartaglia (5☆)' , 'Thoma (4☆)' , 'Traveler (5☆)' , 'Venti (5☆)' , 'Xiangling (4☆)' , 'Xiao (5☆)' , 'Xingqiu (4☆)' , 'Xinyan (4☆)' , 'Yae (5☆)' , 'Yanfei (4☆)' , 'Yoimiya (5☆)' , 'Yun Jin (4☆)' , 'Zhongli (5☆)' ]
 gi_char_rates = [ 0.005, 0.005, 0.038, 0.005, 0.038, 0.038, 0.038, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.005, 0.005, 0.038, 0.005, 0.005, 0.005, 0.005, 0.038, 0.038, 0.005, 0.038, 0.038, 0.001, 0.005, 0.005, 0.038, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005, 0.005, 0.038, 0.005, 0.038, 0.038, 0.005, 0.038, 0.005, 0.038, 0.005 ]
@@ -459,6 +506,21 @@ async def on_message(message):
           formatted_2 += '\n'
       formatted_2 = '```\n' + formatted_2 + '\n```'
       await message.reply(formatted_2)
+
+    elif (command == '$guide'):
+      error = None
+      if len(subcommands) == 1:
+        char = subcommands[0]
+        if char in kqm_guides.keys():
+          url = kqm_guides.get(char)
+        else:
+          error = 'Character not found!'
+      else:
+        error = 'Command error!'
+      if error == None:
+        await message.channel.send(url)
+      else:
+        await message.channel.send(error)
 
     # invalid commends
     else:
