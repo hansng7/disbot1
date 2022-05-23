@@ -15,6 +15,7 @@ kqm_guides = {
   'aloy' : 'https://keqingmains.com/aloy/',
   'amber' : 'https://keqingmains.com/amber/',
   'ayaka' : 'https://keqingmains.com/ayaka/',
+  'ayato' : 'https://keqingmains.com/ayato/',
   'barbara' : 'https://keqingmains.com/barbara/',
   'beidou' : 'https://keqingmains.com/beidou/',
   'bennett' : 'https://keqingmains.com/bennett/',
