@@ -414,7 +414,8 @@ async def on_message(message):
       await send_startremind(daily_remind_str)
 
     elif (command == '$weekly') and is_author_admin(message):
-      await send_startremind(weekly_remind_str)
+      #await send_startremind(weekly_remind_str)
+      pass
 
     elif (command == '$teapot') and is_author_admin(message):
       await send_startremind(teapot_remind_str)
@@ -567,7 +568,8 @@ async def periodic():
     await send_startremind(daily_remind_str)
   # 13:01:00 (mon) => send weekly reminder
   elif is_time_now(13, 1, 0, periodic.seconds, [1]):
-    await send_startremind(weekly_remind_str)
+    #await send_startremind(weekly_remind_str)
+    pass
   # 13:01:00 (tue, thu, sat) => send teapot reminder
   elif is_time_now(13, 1, 0, periodic.seconds, [2,4,6]):
     await send_startremind(teapot_remind_str)
