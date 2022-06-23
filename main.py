@@ -1,3 +1,4 @@
+
 import os
 import random
 import re
@@ -512,7 +513,7 @@ async def on_message(message):
     elif (command == '$guide'):
       error = None
       if len(subcommands) == 1:
-        char = subcommands[0]
+        char = subcommands[0].lower()
         if char in kqm_guides.keys():
           url = kqm_guides.get(char)
         else:
